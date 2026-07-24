@@ -1,15 +1,45 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY)
-
 const app = document.getElementById('app')
-if (app) {
+
+function renderUI(result?: string) {
+  if (!app) return
   app.innerHTML = `
     <div style="padding: 2rem; font-family: system-ui;">
       <h1>Anglo Learner</h1>
       <p>Powered by Google Gemini AI</p>
+      <div style="margin-top:1rem">
+        <textarea id="prompt" rows="4" style="width:100%" placeholder="Enter a prompt..."></textarea>
+        <button id="generate" style="margin-top:0.5rem">Generate</button>
+      </div>
+      <pre id="output" style="white-space:pre-wrap; background:#f7f7f8; padding:1rem; margin-top:1rem">${result ? result : 'Output will appear here'}</pre>
     </div>
   `
+  const btn = document.getElementById('generate')
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      const promptEl = document.getElementById('prompt') as HTMLTextAreaElement | null
+      const output = document.getElementById('output')
+      if (!promptEl || !output) return
+      output.textContent = 'Loading...'
+      try {
+        const resp = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: promptEl.value })
+        })
+        const data = await resp.json()
+        if (!resp.ok) {
+          output.textContent = `Error: ${data?.error ?? JSON.stringify(data)}`
+        } else {
+          // show a stringified result safely
+          output.textContent = typeof data.result === 'string' ? data.result : JSON.stringify(data.result, null, 2)
+        }
+      } catch (e) {
+        output.textContent = `Request failed: ${String(e)}`
+      }
+    })
+  }
 }
 
-console.log('App initialized with Gemini AI')
+renderUI()
+
+console.log('Client UI initialized. Server-side Gemini usage has been moved to /api/generate')
